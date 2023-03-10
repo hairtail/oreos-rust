@@ -1,0 +1,11 @@
+[package]
+name = "oreos"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ironfish_rust = {git = "https://github.com/hairtail/ironfish-rust"}
+anyhow = "1.0.69"
+clap = { version = "4", features = ["derive"] }
