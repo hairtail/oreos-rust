@@ -5,7 +5,7 @@ use ironfish_rust::{
 };
 
 #[derive(Debug, Parser, Clone)]
-#[clap(name = "sharks", author = "hairtail")]
+#[clap(name = "oreos", author = "hairtail")]
 #[clap(author, version, about, long_about = None)]
 pub enum Cli {
     /// Create a new wallet
