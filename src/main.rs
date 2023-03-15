@@ -61,6 +61,6 @@ fn recover_key(data: String, language: String) -> Result<String, IronfishError> 
             data,
             Language::from_language_code(&language).unwrap_or(Language::English),
         )
-        .and_then(|key| Ok(key.to_string())),
+        .map(|key| key.to_string()),
     }
 }
