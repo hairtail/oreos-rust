@@ -61,3 +61,20 @@ cargo build --release
   Outgoing View Key  xxx
       Address  xxx
 ```
+
+## 4. Encrypted Note
+
+Known AssetId
+
+`d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6` --  Ironfish Native Token
+
+### 4.1 Decrypt with IncomingViewKey and OutgoingViewKey
+
+```
+./target/release/oreos decrypt --data "encrypted note(hex encoded)" -i "incoimingViewKey" -o "outgoingViewKey"
+       Sender  xxx
+     Receiver  xxx
+        Value  1000
+       AssetId  d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6
+         Memo  xx
+```

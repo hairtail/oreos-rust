@@ -9,3 +9,4 @@ edition = "2021"
 ironfish_rust = { git = "https://github.com/hairtail/ironfish-rust" }
 anyhow = "1.0.69"
 clap = { version = "4", features = ["derive"] }
+hex = "0.4.3"

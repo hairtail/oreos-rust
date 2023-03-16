@@ -2,6 +2,7 @@ use clap::Parser;
 use ironfish_rust::{
     errors::IronfishError,
     keys::{Language, SaplingKey},
+    IncomingViewKey, MerkleNote, OutgoingViewKey,
 };
 
 #[derive(Debug, Parser, Clone)]
@@ -12,6 +13,8 @@ pub enum Cli {
     Create,
     /// Recover wallet from spendingKey | mnemonic
     Recover(Recover),
+    /// Decrypt an encrypted note
+    Decrypt(Decrypt),
 }
 
 #[derive(Debug, Parser, Clone)]
@@ -45,6 +48,11 @@ fn main() -> anyhow::Result<()> {
             Ok(key.to_string())
         }
         Cli::Recover(Recover { data, language }) => recover_key(data, language),
+        Cli::Decrypt(Decrypt {
+            data,
+            incoming_viewkey,
+            outgoing_viewkey,
+        }) => decrypt_encnote(data, incoming_viewkey, outgoing_viewkey),
     };
     match result {
         Ok(output) => println!("{output}\n"),
@@ -63,4 +71,27 @@ fn recover_key(data: String, language: String) -> Result<String, IronfishError> 
         )
         .map(|key| key.to_string()),
     }
+}
+
+fn decrypt_encnote(
+    data: String,
+    incoming_key: String,
+    outgoing_key: String,
+) -> Result<String, IronfishError> {
+    let data = hex::decode(data).unwrap();
+    let note_enc = MerkleNote::read(&data[..])?;
+
+    let incoing_view_key = IncomingViewKey::from_hex(&incoming_key)?;
+    let note_as_receiver = note_enc.decrypt_note_for_owner(&incoing_view_key);
+    if let Ok(note) = note_as_receiver {
+        return Ok(note.to_string());
+    }
+
+    let outgoing_view_key = OutgoingViewKey::from_hex(&outgoing_key)?;
+    let note_as_spender = note_enc.decrypt_note_for_spender(&outgoing_view_key);
+    if let Ok(note) = note_as_spender {
+        return Ok(note.to_string());
+    }
+
+    Ok("You are not owner/spender of this note".to_string())
 }
