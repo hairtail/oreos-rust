@@ -78,3 +78,25 @@ Known AssetId
        AssetId  d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6
          Memo  xx
 ```
+
+
+## 5. Transaction
+Transaction decryption with `transactionHash`, `incomingViewKey`, `outgoingViewKey`. A full synced Ironfish rpc endpoint is needed (http).
+### 5.1 How?
+- Get transaction info (blockHash) with oreoscan.info api
+- Get raw transaction info (encrypted note) with endpoint (Ironfish rpc)
+- Decrypt all encrypted note locally as `oreos decrypt`
+
+Known AssetId
+
+`d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6` --  Ironfish Native Token
+
+```
+./target/release/oreos watch -i xxx -o xxx --endpoint "127.0.0.1:8021" --hash xxx
+// Sender address
+Sender: 123xsdawegjkljsd
+// Receiver: receiver address, value in ore, asset id, memo
+Receiver: xxx, 100, d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6, hello
+Receiver: xxx, 100, d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6, hello
+```
+
