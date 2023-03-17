@@ -10,3 +10,5 @@ ironfish_rust = { git = "https://github.com/hairtail/ironfish-rust" }
 anyhow = "1.0.69"
 clap = { version = "4", features = ["derive"] }
 hex = "0.4.3"
+ureq = { version = "2.6.2", features = ["json"] }
+serde = { version = "1.0.156", features = ["derive"] }
