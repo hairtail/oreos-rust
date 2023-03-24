@@ -1,17 +1,38 @@
 use clap::Parser;
-use ironfish_rust::keys::SaplingKey;
-use oreos::{decrypt_encrypted_note_print, decrypt_tx_print, recover_key, Cli};
+use oreos::cli::{Command, Transaction, CLI};
+use oreos::{causal_send, create_account, decrypt_tx};
 
 fn main() -> anyhow::Result<()> {
-    let cli = Cli::parse();
-    let result = match cli {
-        Cli::Create => {
-            let key = SaplingKey::generate_key();
-            Ok(key.to_string())
-        }
-        Cli::Recover(key) => recover_key(key),
-        Cli::Decrypt(data) => decrypt_encrypted_note_print(data),
-        Cli::Watch(tx) => decrypt_tx_print(tx),
+    let cli = CLI::parse();
+    let result = match cli.command {
+        Command::Account(acc) => create_account(acc),
+        Command::Transaction(tx) => match tx {
+            Transaction::Decrypt {
+                hash,
+                incoming_viewkey,
+                outgoing_viewkey,
+                endpoint,
+            } => decrypt_tx(hash, incoming_viewkey, outgoing_viewkey, endpoint),
+            Transaction::Send {
+                hash,
+                incoming_viewkey,
+                outgoing_viewkey,
+                endpoint,
+                receiver,
+                amount,
+                fee,
+                memo,
+            } => causal_send(
+                hash,
+                incoming_viewkey,
+                outgoing_viewkey,
+                endpoint,
+                receiver,
+                amount,
+                fee,
+                memo,
+            ),
+        },
     };
     match result {
         Ok(output) => println!("{}\n", output),
