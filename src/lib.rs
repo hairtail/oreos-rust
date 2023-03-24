@@ -1,147 +1,75 @@
-use clap::Parser;
+pub mod abi;
+pub mod cli;
+pub mod oreoscan;
+pub mod rpc;
+
+use abi::TransactionReceiver;
+use cli::Account;
 use ironfish_rust::{
     errors::IronfishError, keys::Language, IncomingViewKey, MerkleNote, Note, OutgoingViewKey,
-    SaplingKey,
+    PublicAddress, SaplingKey,
 };
-use serde::{Deserialize, Serialize};
+use oreoscan::OreoscanRequest;
+use rpc::RpcHandler;
 use std::collections::HashMap;
 
-#[derive(Debug, Parser, Clone)]
-#[clap(name = "oreos", author = "hairtail")]
-#[clap(author, version, about, long_about = None)]
-pub enum Cli {
-    /// Create a new wallet
-    Create,
-    /// Recover wallet from spendingKey | mnemonic
-    Recover(Recover),
-    /// Decrypt an encrypted note
-    Decrypt(Decrypt),
-    /// Decrypt a transaction
-    Watch(Transaction),
-}
-
-#[derive(Debug, Parser, Clone)]
-pub struct Recover {
-    /// Mnemonic or spendingKey used to recover wallet from
-    #[clap(short, long)]
-    pub data: String,
-    /// Language if mnemonic is used
-    #[clap(short, long, default_value_t=String::from("en"))]
-    pub language: String,
-}
-
-#[derive(Debug, Parser, Clone)]
-pub struct Decrypt {
-    /// Hex encoded data of encrypted note
-    #[clap(short, long)]
-    pub data: String,
-    /// Hex encoded account incoming view key
-    #[clap(short, long)]
-    pub incoming_viewkey: String,
-    /// Hex encoded account outgoing view key
-    #[clap(short, long)]
-    pub outgoing_viewkey: String,
-}
-
-#[derive(Debug, Parser, Clone)]
-pub struct Transaction {
-    /// Transaction hash
-    #[clap(long)]
-    pub hash: String,
-    /// Hex encoded account incoming view key
-    #[clap(short, long)]
-    pub incoming_viewkey: String,
-    /// Hex encoded account outgoing view key
-    #[clap(short, long)]
-    pub outgoing_viewkey: String,
-    /// Rpc node for getTransaction
-    #[clap(long)]
-    pub endpoint: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct OreoTransaction {
-    hash: String,
-    blockHash: String,
-    index: u32,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct RpcResponse {
-    status: u16,
-    data: RpcTransaction,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct RpcTransaction {
-    notesEncrypted: Vec<String>,
-}
-
-pub struct TransactionReceiver {
-    address: String,
-    value: u64,
-    assetId: String,
-    memo: String,
-}
-
-pub fn recover_key(data: Recover) -> Result<String, IronfishError> {
-    let key_from_spending = SaplingKey::from_hex(&data.data);
-    match key_from_spending {
-        Ok(key) => Ok(key.to_string()),
-        Err(_error) => SaplingKey::from_words(
-            data.data.clone(),
-            Language::from_language_code(&data.language).unwrap_or(Language::English),
-        )
-        .map(|key| key.to_string()),
+pub fn create_account(account: Account) -> Result<String, IronfishError> {
+    match account {
+        Account::New {
+            mnemonic,
+            language,
+            key,
+        } => {
+            if mnemonic.is_some() {
+                Ok(SaplingKey::from_words(
+                    mnemonic.unwrap(),
+                    Language::from_language_code(&language).unwrap_or(Language::English),
+                )?
+                .to_string())
+            } else if key.is_some() {
+                Ok(SaplingKey::from_hex(&key.unwrap())?.to_string())
+            } else {
+                Ok(SaplingKey::generate_key().to_string())
+            }
+        }
     }
 }
 
-fn decrypt_encrypted_note(enc: Decrypt) -> Result<Note, IronfishError> {
-    let data = hex::decode(enc.data).unwrap();
+fn decrypt_encrypted_note(
+    enc_note: String,
+    incoming_viewkey: &str,
+    outgoing_viewkey: &str,
+) -> Result<Note, IronfishError> {
+    let data = hex::decode(enc_note).unwrap();
     let note_enc = MerkleNote::read(&data[..])?;
 
-    let incoing_view_key = IncomingViewKey::from_hex(&enc.incoming_viewkey)?;
+    let incoing_view_key = IncomingViewKey::from_hex(incoming_viewkey)?;
     let note_as_receiver = note_enc.decrypt_note_for_owner(&incoing_view_key);
     if let Ok(note) = note_as_receiver {
         return Ok(note);
     }
 
-    let outgoing_view_key = OutgoingViewKey::from_hex(&enc.outgoing_viewkey)?;
+    let outgoing_view_key = OutgoingViewKey::from_hex(outgoing_viewkey)?;
     let note_as_spender = note_enc.decrypt_note_for_spender(&outgoing_view_key);
     if let Ok(note) = note_as_spender {
         return Ok(note);
-    }
+    };
 
-    Err(IronfishError::InvalidDecryptionKey)
+    Err(IronfishError::InvalidViewingKey)
 }
 
-pub fn decrypt_encrypted_note_print(enc: Decrypt) -> Result<String, IronfishError> {
-    decrypt_encrypted_note(enc).map(|note| note.to_string())
-}
-
-fn decrypt_tx(tx: Transaction) -> Result<HashMap<String, Vec<TransactionReceiver>>, IronfishError> {
-    let oreos_tx_path = format!("http://www.oreoscan.info/v0/api/transaction/{}", tx.hash);
-    let transaction_info: OreoTransaction = ureq::get(&oreos_tx_path)
-        .call()
-        .unwrap()
-        .into_json()
-        .unwrap();
-    let full_path = format!("http://{}/chain/getTransaction", tx.endpoint);
-    let resp: RpcResponse = ureq::post(&full_path)
-        .send_json(ureq::json!({
-            "blockHash": transaction_info.blockHash.clone(),
-            "transactionHash": transaction_info.hash.clone(),
-        }))
-        .unwrap()
-        .into_json()
-        .unwrap();
+fn decrypt_tx_internal(
+    hash: String,
+    incoming_viewkey: &str,
+    outgoing_viewkey: &str,
+    endpoint: String,
+) -> anyhow::Result<HashMap<String, Vec<TransactionReceiver>>> {
+    let transaction_info = OreoscanRequest::get_transaction(&hash)?;
+    let rpc_handler = RpcHandler::new(endpoint);
+    let resp = rpc_handler.get_transaction(&transaction_info.blockHash, &transaction_info.hash)?;
     let mut result: HashMap<String, Vec<TransactionReceiver>> = HashMap::new();
-    for item in resp.data.notesEncrypted {
-        if let Ok(note) = decrypt_encrypted_note(Decrypt {
-            data: item,
-            incoming_viewkey: tx.incoming_viewkey.clone(),
-            outgoing_viewkey: tx.outgoing_viewkey.clone(),
-        }) {
+    for item in resp.notesEncrypted {
+        if let Ok(note) = decrypt_encrypted_note(item, incoming_viewkey, outgoing_viewkey) {
             let key = note.sender().hex_public_address();
             let receiver = TransactionReceiver {
                 address: note.owner().hex_public_address(),
@@ -155,20 +83,89 @@ fn decrypt_tx(tx: Transaction) -> Result<HashMap<String, Vec<TransactionReceiver
     Ok(result)
 }
 
-pub fn decrypt_tx_print(tx: Transaction) -> Result<String, IronfishError> {
-    decrypt_tx(tx).map(|tx| {
-        let mut result = String::from("");
-        for (sender, receivers) in tx.iter() {
-            let sender = format!("Sender: {}\n", sender);
-            result.push_str(&sender);
-            for receiver in receivers {
-                let line = format!(
-                    "Receiver: {}, {}, {}, {}\n",
-                    receiver.address, receiver.value, receiver.assetId, receiver.memo
-                );
-                result.push_str(&line);
+pub fn decrypt_tx(
+    hash: String,
+    incoming_viewkey: String,
+    outgoing_viewkey: String,
+    endpoint: String,
+) -> Result<String, IronfishError> {
+    let decrypted_note = decrypt_tx_internal(
+        hash.clone(),
+        &incoming_viewkey,
+        &outgoing_viewkey,
+        endpoint.clone(),
+    );
+    match decrypted_note {
+        Ok(notes) => {
+            let mut result = String::from("");
+            let view_key = IncomingViewKey::from_hex(&incoming_viewkey).unwrap();
+            let addr = PublicAddress::from_view_key(&view_key).hex_public_address();
+            let mut sendable_value = 0u64;
+            for (sender, receivers) in notes.iter() {
+                let sender = format!("Sender: {}\n", sender);
+                result.push_str(&sender);
+                for receiver in receivers {
+                    let line = format!(
+                        "Receiver: {}, {}, {}, {}\n",
+                        receiver.address, receiver.value, receiver.assetId, receiver.memo
+                    );
+                    result.push_str(&line);
+                    if receiver.address == addr {
+                        sendable_value += receiver.value;
+                    }
+                }
             }
+            if sendable_value > 0u64 {
+                result.push_str(
+                    format!(
+                        "You have received {} $ore in this transaction",
+                        sendable_value
+                    )
+                    .as_str(),
+                );
+            };
+            return Ok(result);
         }
-        result
-    })
+        Err(e) => return Ok(e.to_string()),
+    };
+}
+
+pub fn causal_send(
+    hash: String,
+    incoming_viewkey: String,
+    outgoing_viewkey: String,
+    endpoint: String,
+    receiver: String,
+    amount: u64,
+    fee: u64,
+    memo: String,
+) -> Result<String, IronfishError> {
+    match decrypt_tx_internal(
+        hash.clone(),
+        &incoming_viewkey,
+        &outgoing_viewkey,
+        endpoint.clone(),
+    ) {
+        Ok(data) => {
+            let view_key = IncomingViewKey::from_hex(&incoming_viewkey)?;
+            let addr = PublicAddress::from_view_key(&view_key).hex_public_address();
+            let mut sendable_value = 0u64;
+            let mut spends = Vec::new();
+            for (_sender, receivers) in data.iter() {
+                for receiver in receivers {
+                    if receiver.address == addr {
+                        sendable_value += receiver.value;
+                        spends.push(receiver);
+                    }
+                }
+            }
+            println!("You have received {} $ore in this transaction.\n You can send them to another address now", sendable_value);
+            println!(
+                "You are about to send: {} $ore to {}, gas: {} $ore, memo: {}",
+                amount, receiver, fee, memo
+            );
+            Ok("hello".into())
+        }
+        Err(e) => Ok(e.to_string()),
+    }
 }
