@@ -63,10 +63,14 @@ pub enum Transaction {
         /// Hex encoded account outgoing view key
         #[clap(short, long)]
         outgoing_viewkey: String,
+        /// Hex encoded account spending key
+        #[clap(short, long)]
+        spending_key: String,
         /// Rpc endpoint (http)
         #[clap(long)]
         endpoint: String,
         /// Receiver address
+        #[clap(long)]
         receiver: String,
         /// Amount sent to receiver
         #[clap(long)]

@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 ironfish_rust = { git = "https://github.com/hairtail/ironfish-rust" }
+ironfish_zkp = { git = "https://github.com/hairtail/ironfish-zkp" }
 anyhow = "1.0.69"
 clap = { version = "4", features = ["derive"] }
 hex = "0.4.3"

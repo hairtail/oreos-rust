@@ -1,3 +1,4 @@
+use ironfish_rust::Note;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -39,6 +40,8 @@ pub struct NoteWitness {
 }
 
 pub struct TransactionReceiver {
+    pub note: Note,
+    pub index: u32,
     pub address: String,
     pub value: u64,
     pub assetId: String,

@@ -6,12 +6,20 @@ pub mod rpc;
 use abi::TransactionReceiver;
 use cli::Account;
 use ironfish_rust::{
-    errors::IronfishError, keys::Language, IncomingViewKey, MerkleNote, Note, OutgoingViewKey,
-    PublicAddress, SaplingKey,
+    assets::asset::asset_generator_from_id,
+    errors::IronfishError,
+    keys::Language,
+    sapling_bls12::Scalar,
+    witness::{Witness, WitnessNode},
+    IncomingViewKey, MerkleNote, Note, OutgoingViewKey, ProposedTransaction, PublicAddress,
+    SaplingKey,
 };
+use ironfish_zkp::constants::ASSET_ID_LENGTH;
 use oreoscan::OreoscanRequest;
 use rpc::RpcHandler;
 use std::collections::HashMap;
+
+const NATIVE_ASSET_ID: &str = "d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6";
 
 pub fn create_account(account: Account) -> Result<String, IronfishError> {
     match account {
@@ -65,6 +73,7 @@ fn decrypt_tx_internal(
     endpoint: String,
 ) -> anyhow::Result<HashMap<String, Vec<TransactionReceiver>>> {
     let transaction_info = OreoscanRequest::get_transaction(&hash)?;
+    let mut note_index = transaction_info.index;
     let rpc_handler = RpcHandler::new(endpoint);
     let resp = rpc_handler.get_transaction(&transaction_info.blockHash, &transaction_info.hash)?;
     let mut result: HashMap<String, Vec<TransactionReceiver>> = HashMap::new();
@@ -72,6 +81,8 @@ fn decrypt_tx_internal(
         if let Ok(note) = decrypt_encrypted_note(item, incoming_viewkey, outgoing_viewkey) {
             let key = note.sender().hex_public_address();
             let receiver = TransactionReceiver {
+                note: note.clone(),
+                index: note_index,
                 address: note.owner().hex_public_address(),
                 value: note.value(),
                 assetId: hex::encode(note.asset_id()),
@@ -79,6 +90,7 @@ fn decrypt_tx_internal(
             };
             result.entry(key).or_insert(Vec::new()).push(receiver);
         }
+        note_index += 1;
     }
     Ok(result)
 }
@@ -134,6 +146,7 @@ pub fn causal_send(
     hash: String,
     incoming_viewkey: String,
     outgoing_viewkey: String,
+    spending_key: String,
     endpoint: String,
     receiver: String,
     amount: u64,
@@ -159,13 +172,78 @@ pub fn causal_send(
                     }
                 }
             }
-            println!("You have received {} $ore in this transaction.\n You can send them to another address now", sendable_value);
+            if sendable_value <= 0u64 {
+                println!("You are not receiver of this transaction");
+                return Err(IronfishError::InvalidBalance);
+            }
+
+            if sendable_value <= amount {
+                println!("Amount not enough to send");
+                return Err(IronfishError::InvalidBalance);
+            }
+
+            println!("You have received {} $ore in this transaction.\nYou can send them to another address now", sendable_value);
             println!(
                 "You are about to send: {} $ore to {}, gas: {} $ore, memo: {}",
                 amount, receiver, fee, memo
             );
-            Ok("hello".into())
+
+            // Transaction creation starts here
+            let mut builder = ProposedTransaction::new(SaplingKey::from_hex(&spending_key)?);
+
+            // Transaction spends
+            let rpc_handler = RpcHandler::new(endpoint);
+            for spend in spends.iter() {
+                let witness_rpc = rpc_handler.get_witness(spend.index).unwrap();
+                let witness = Witness {
+                    tree_size: witness_rpc.treeSize as usize,
+                    root_hash: Scalar::from_bytes(
+                        hex::decode(witness_rpc.rootHash.clone()).unwrap()[..]
+                            .try_into()
+                            .unwrap(),
+                    )
+                    .unwrap(),
+                    auth_path: witness_rpc
+                        .authPath
+                        .iter()
+                        .map(|item| {
+                            let data = hex::decode(item.hashOfSibling.clone()).unwrap();
+                            let sc = Scalar::from_bytes(&data.try_into().unwrap()).unwrap();
+                            if item.side.as_str() == "Left" {
+                                WitnessNode::Left(sc)
+                            } else {
+                                WitnessNode::Right(sc)
+                            }
+                        })
+                        .collect(),
+                };
+                builder.add_spend(spend.note.clone(), &witness)?;
+            }
+
+            // Transaction outputs
+            let output = create_output(&receiver, &addr, amount, memo)?;
+            builder.add_output(output)?;
+            let transaction = builder.post(None, fee)?;
+            let mut vec: Vec<u8> = vec![];
+            transaction.write(&mut vec)?;
+            let transaction_hex = hex::encode(vec);
+            Ok(transaction_hex)
         }
         Err(e) => Ok(e.to_string()),
     }
+}
+
+fn create_output(
+    owner_address: &str,
+    sender_address: &str,
+    value: u64,
+    memo: String,
+) -> Result<Note, IronfishError> {
+    let owner = PublicAddress::from_hex(owner_address)?;
+    let sender = PublicAddress::from_hex(sender_address)?;
+    let asset_id_vec = hex::decode(NATIVE_ASSET_ID).unwrap();
+    let mut asset_id_bytes = [0; ASSET_ID_LENGTH];
+    asset_id_bytes.clone_from_slice(&asset_id_vec[0..ASSET_ID_LENGTH]);
+    let asset_generator = asset_generator_from_id(&asset_id_bytes);
+    Ok(Note::new(owner, value, memo, asset_generator, sender))
 }
