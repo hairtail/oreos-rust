@@ -17,6 +17,11 @@ Next, move into the `oreos-rust` directory:
 cd oreos-rust
 ```
 
+Then, install necessary dependency:
+```
+./install_dep.sh
+```
+
 Lastly, 
 
 ```
@@ -64,7 +69,7 @@ cargo build --release
 
 ## 4. Transaction
 Transaction decryption with `transactionHash`, `incomingViewKey`, `outgoingViewKey`. A full synced Ironfish rpc endpoint is needed (http).
-### 4.1 How?
+### 4.1 Transaction Decryption
 - Get transaction info (blockHash) with oreoscan.info api
 - Get raw transaction info (encrypted note) with endpoint (Ironfish rpc)
 - Decrypt all encrypted note locally
@@ -82,3 +87,17 @@ Receiver: xxx, 100, d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e
 Receiver: xxx, 100, d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6, hello
 ```
 
+### 4.2 What Causal Send Means
+`Alice` received 100 coins from `Bob` in transactionX, `Alice` exactly knows that she has never spent this 100 coins. Then she can send the received coins from transactionX to `Amy`. So she can create a transaction locally without a fully syncd ironfish node, and post this transaction via a public rpc. The ironfish blockchain consensus is responsible for the transaction validation (no double spend).
+
+### 4.3 Transaction Causal Send
+
+- Get transaction info (blockHash) with oreoscan.info api
+- Get raw transaction info (encrypted note) with endpoint (Ironfish rpc)
+- Decrypt all encrypted note locally
+- Transaction creation and signing locally
+- Transaction broadcast via rpc
+
+```
+./target/release/oreos transaction send --hash <HASH> --incoming-viewkey <INCOMING_VIEWKEY> --outgoing-viewkey <OUTGOING_VIEWKEY> --spending-key <SPENDING_KEY> --endpoint <ENDPOINT> --receiver <RECEIVER> --amount <AMOUNT> --expiration <EXPIRATION> --memo <MEMO>
+```
