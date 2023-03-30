@@ -22,6 +22,7 @@ fn main() -> anyhow::Result<()> {
                 receiver,
                 amount,
                 fee,
+                expiration,
                 memo,
             } => causal_send(
                 hash,
@@ -32,6 +33,7 @@ fn main() -> anyhow::Result<()> {
                 receiver,
                 amount,
                 fee,
+                expiration,
                 memo,
             ),
         },

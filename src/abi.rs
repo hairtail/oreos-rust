@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct OreoTransaction {
     pub hash: String,
     pub blockHash: String,
-    pub index: u32,
+    pub index: u64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -15,13 +15,20 @@ pub struct Asset {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct RpcNote {
+    pub noteIndex: u64,
+    pub noteData: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct RpcTransaction {
     pub fee: String,
     pub expiration: u64,
+    pub index: u64,
     pub notesCount: u64,
     pub spendsCount: u64,
     pub signature: String,
-    pub notesEncrypted: Vec<String>,
+    pub notesEncrypted: Vec<RpcNote>,
     pub mints: Vec<Asset>,
     pub burns: Vec<Asset>,
 }
@@ -41,7 +48,7 @@ pub struct NoteWitness {
 
 pub struct TransactionReceiver {
     pub note: Note,
-    pub index: u32,
+    pub index: u64,
     pub address: String,
     pub value: u64,
     pub assetId: String,

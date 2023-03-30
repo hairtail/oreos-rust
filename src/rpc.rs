@@ -43,7 +43,7 @@ impl RpcHandler {
         Ok(response.data)
     }
 
-    pub fn get_witness(&self, index: u32) -> Result<NoteWitness> {
+    pub fn get_witness(&self, index: u64) -> Result<NoteWitness> {
         let path = format!("http://{}/chain/getNoteWitness", self.endpoint);
         let response: RpcResponse<NoteWitness> = self
             .agent
@@ -56,7 +56,11 @@ impl RpcHandler {
         Ok(response.data)
     }
 
-    pub fn post_transaction(&self, _raw_transaction: String) -> Result<()> {
-        unimplemented!()
+    pub fn post_transaction(&self, signed_transaction: String) -> Result<()> {
+        let path = format!("http://{}/chain/postTransaction", self.endpoint);
+        self.agent.clone().post(&path).send_json(ureq::json!({
+            "transaction": signed_transaction,
+        }))?;
+        Ok(())
     }
 }

@@ -73,16 +73,16 @@ fn decrypt_tx_internal(
     endpoint: String,
 ) -> anyhow::Result<HashMap<String, Vec<TransactionReceiver>>> {
     let transaction_info = OreoscanRequest::get_transaction(&hash)?;
-    let mut note_index = transaction_info.index;
     let rpc_handler = RpcHandler::new(endpoint);
     let resp = rpc_handler.get_transaction(&transaction_info.blockHash, &transaction_info.hash)?;
     let mut result: HashMap<String, Vec<TransactionReceiver>> = HashMap::new();
     for item in resp.notesEncrypted {
-        if let Ok(note) = decrypt_encrypted_note(item, incoming_viewkey, outgoing_viewkey) {
+        if let Ok(note) = decrypt_encrypted_note(item.noteData, incoming_viewkey, outgoing_viewkey)
+        {
             let key = note.sender().hex_public_address();
             let receiver = TransactionReceiver {
                 note: note.clone(),
-                index: note_index,
+                index: item.noteIndex,
                 address: note.owner().hex_public_address(),
                 value: note.value(),
                 assetId: hex::encode(note.asset_id()),
@@ -90,7 +90,6 @@ fn decrypt_tx_internal(
             };
             result.entry(key).or_insert(Vec::new()).push(receiver);
         }
-        note_index += 1;
     }
     Ok(result)
 }
@@ -151,6 +150,7 @@ pub fn causal_send(
     receiver: String,
     amount: u64,
     fee: u64,
+    expiration: u32,
     memo: String,
 ) -> Result<String, IronfishError> {
     match decrypt_tx_internal(
@@ -182,7 +182,10 @@ pub fn causal_send(
                 return Err(IronfishError::InvalidBalance);
             }
 
-            println!("You have received {} $ore in this transaction.\nYou can send them to another address now", sendable_value);
+            println!(
+                "You have received {} $ore in this transaction.",
+                sendable_value
+            );
             println!(
                 "You are about to send: {} $ore to {}, gas: {} $ore, memo: {}",
                 amount, receiver, fee, memo
@@ -223,11 +226,16 @@ pub fn causal_send(
             // Transaction outputs
             let output = create_output(&receiver, &addr, amount, memo)?;
             builder.add_output(output)?;
+            builder.set_expiration(expiration);
             let transaction = builder.post(None, fee)?;
+            transaction.verify()?;
             let mut vec: Vec<u8> = vec![];
             transaction.write(&mut vec)?;
-            let transaction_hex = hex::encode(vec);
-            Ok(transaction_hex)
+            let hash = blake3::hash(&vec);
+            let hex_hash = hex::encode(hash.as_bytes());
+            let signed_transaction = hex::encode(vec);
+            rpc_handler.post_transaction(signed_transaction).unwrap();
+            Ok(format!("Transaction sent successfully, hash: {}", hex_hash))
         }
         Err(e) => Ok(e.to_string()),
     }
