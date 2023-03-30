@@ -5,9 +5,9 @@ use std::time::Duration;
 use ureq::Agent;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct RpcResponse {
+pub struct RpcResponse<T> {
     pub status: u16,
-    pub data: RpcTransaction,
+    pub data: T,
 }
 
 pub struct RpcHandler {
@@ -31,7 +31,7 @@ impl RpcHandler {
         transaction_hash: &str,
     ) -> Result<RpcTransaction> {
         let path = format!("http://{}/chain/getTransaction", self.endpoint);
-        let response: RpcResponse = self
+        let response: RpcResponse<RpcTransaction> = self
             .agent
             .clone()
             .post(&path)
@@ -43,11 +43,24 @@ impl RpcHandler {
         Ok(response.data)
     }
 
-    pub fn get_witness(&self, _index: u64) -> Result<NoteWitness> {
-        unimplemented!()
+    pub fn get_witness(&self, index: u64) -> Result<NoteWitness> {
+        let path = format!("http://{}/chain/getNoteWitness", self.endpoint);
+        let response: RpcResponse<NoteWitness> = self
+            .agent
+            .clone()
+            .post(&path)
+            .send_json(ureq::json!({
+                "index": index,
+            }))?
+            .into_json()?;
+        Ok(response.data)
     }
 
-    pub fn post_transaction(&self, _raw_transaction: String) -> Result<()> {
-        unimplemented!()
+    pub fn post_transaction(&self, signed_transaction: String) -> Result<()> {
+        let path = format!("http://{}/chain/postTransaction", self.endpoint);
+        self.agent.clone().post(&path).send_json(ureq::json!({
+            "transaction": signed_transaction,
+        }))?;
+        Ok(())
     }
 }

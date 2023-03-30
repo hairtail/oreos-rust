@@ -63,10 +63,14 @@ pub enum Transaction {
         /// Hex encoded account outgoing view key
         #[clap(short, long)]
         outgoing_viewkey: String,
+        /// Hex encoded account spending key
+        #[clap(short, long)]
+        spending_key: String,
         /// Rpc endpoint (http)
         #[clap(long)]
         endpoint: String,
         /// Receiver address
+        #[clap(long)]
         receiver: String,
         /// Amount sent to receiver
         #[clap(long)]
@@ -74,6 +78,9 @@ pub enum Transaction {
         /// Gas fee for this transaction
         #[clap(long, default_value_t = 1u64)]
         fee: u64,
+        /// Expiration sequence for this transaction
+        #[clap(long)]
+        expiration: u32,
         /// Memo in transaction
         #[clap(long, default_value_t=String::from("oreos-causal-send"))]
         memo: String,
