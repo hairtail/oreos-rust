@@ -1,6 +1,6 @@
 ## 1. Overview
 
-oreo-rust is a small tool for ironfish account creation, recovery (from `spendingKey`, from `mnemonic`), and `encryptedNote` decryption.
+oreo-rust is a small tool for ironfish account creation, recovery (from `spendingKey`, from `mnemonic`), `transaction` decryption and `transaction causal send`.
 
 ## 2. Build Guide
 
@@ -68,8 +68,9 @@ cargo build --release
 ```
 
 ## 4. Transaction
-Transaction decryption with `transactionHash`, `incomingViewKey`, `outgoingViewKey`. A full synced Ironfish rpc endpoint is needed (http).
+
 ### 4.1 Transaction Decryption
+Transaction decryption with `transactionHash`, `incomingViewKey`, `outgoingViewKey`. A full synced Ironfish rpc endpoint is needed (http).
 - Get transaction info (blockHash) with oreoscan.info api
 - Get raw transaction info (encrypted note) with endpoint (Ironfish rpc)
 - Decrypt all encrypted note locally
