@@ -70,9 +70,9 @@ cargo build --release
 ## 4. Transaction
 
 ### 4.1 Transaction Decryption
-Transaction decryption with `transactionHash`, `incomingViewKey`, `outgoingViewKey`. A full synced Ironfish rpc endpoint is needed (http).
-- Get transaction info (blockHash) with oreoscan.info api
-- Get raw transaction info (encrypted note) with endpoint (Ironfish rpc)
+Transaction decryption with `transactionHash`, `incomingViewKey`, `outgoingViewKey`.
+- Get transaction info (blockHash) via oreoscan.info api
+- Get raw transaction info (encrypted note) via oreoscan.info api
 - Decrypt all encrypted note locally
 
 Known AssetId
@@ -80,7 +80,7 @@ Known AssetId
 `d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6` --  Ironfish Native Token
 
 ```
-./target/release/oreos transaction decrypt --hash <HASH> --incoming-viewkey <INCOMING_VIEWKEY> --outgoing-viewkey <OUTGOING_VIEWKEY> --endpoint <ENDPOINT>
+./target/release/oreos transaction decrypt --hash <HASH> --incoming-viewkey <INCOMING_VIEWKEY> --outgoing-viewkey <OUTGOING_VIEWKEY>
 // Sender address
 Sender: 123xsdawegjkljsd
 // Receiver: receiver address, value in ore, asset id, memo
@@ -93,12 +93,12 @@ Receiver: xxx, 100, d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e
 
 ### 4.3 Transaction Causal Send
 
-- Get transaction info (blockHash) with oreoscan.info api
-- Get raw transaction info (encrypted note) with endpoint (Ironfish rpc)
+- Get transaction info (blockHash) via oreoscan.info api
+- Get raw transaction info (encrypted note) via oreoscan.info api
 - Decrypt all encrypted note locally
 - Transaction creation and signing locally
-- Transaction broadcast via rpc
+- Transaction broadcast via oreoscan.info api
 
 ```
-./target/release/oreos transaction send --hash <HASH> --incoming-viewkey <INCOMING_VIEWKEY> --outgoing-viewkey <OUTGOING_VIEWKEY> --spending-key <SPENDING_KEY> --endpoint <ENDPOINT> --receiver <RECEIVER> --amount <AMOUNT> --expiration <EXPIRATION> --memo <MEMO>
+./target/release/oreos transaction send --hash <HASH> --incoming-viewkey <INCOMING_VIEWKEY> --outgoing-viewkey <OUTGOING_VIEWKEY> --spending-key <SPENDING_KEY> --receiver <RECEIVER> --amount <AMOUNT> --expiration <EXPIRATION> --memo <MEMO>
 ```
