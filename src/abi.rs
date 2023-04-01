@@ -2,6 +2,11 @@ use ironfish_rust::Note;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct OreoOverview {
+    pub height: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct OreoTransaction {
     pub hash: String,
     pub blockHash: String,

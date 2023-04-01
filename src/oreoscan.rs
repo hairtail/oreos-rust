@@ -1,5 +1,5 @@
 use crate::{
-    abi::{NoteWitness, OreoTransaction, RpcTransaction},
+    abi::{NoteWitness, OreoOverview, OreoTransaction, RpcTransaction},
     rpc::RpcResponse,
 };
 use anyhow::Result;
@@ -21,6 +21,13 @@ impl OreoscanRequest {
                 .build(),
         }
     }
+
+    pub fn get_chain_header(&self) -> Result<u32> {
+        let path = format!("{}/overview", self.base_route);
+        let response: OreoOverview = ureq::get(&path).call()?.into_json()?;
+        Ok(response.height)
+    }
+
     pub fn get_transaction(&self, hash: &str) -> Result<OreoTransaction> {
         let oreos_tx_path = format!("{}/transaction/{}", self.base_route, hash);
         let response: OreoTransaction = ureq::get(&oreos_tx_path).call()?.into_json()?;

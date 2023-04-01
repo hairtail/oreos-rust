@@ -99,6 +99,10 @@ Receiver: xxx, 100, d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e
 - Transaction creation and signing locally
 - Transaction broadcast via oreoscan.info api
 
+Default parameters:
+- memo: "oreos-causal-send"
+- expiration: current chain header + 30
+
 ```
 ./target/release/oreos transaction send --hash <HASH> --incoming-viewkey <INCOMING_VIEWKEY> --outgoing-viewkey <OUTGOING_VIEWKEY> --spending-key <SPENDING_KEY> --receiver <RECEIVER> --amount <AMOUNT> --expiration <EXPIRATION> --memo <MEMO>
 ```

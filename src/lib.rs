@@ -143,7 +143,7 @@ pub fn causal_send(
     receiver: String,
     amount: u64,
     fee: u64,
-    expiration: u32,
+    expiration: Option<u32>,
     memo: String,
 ) -> Result<String, IronfishError> {
     let handler = OreoscanRequest::new();
@@ -214,7 +214,16 @@ pub fn causal_send(
             // Transaction outputs
             let output = create_output(&receiver, &addr, amount, memo)?;
             builder.add_output(output)?;
-            builder.set_expiration(expiration);
+
+            // Transaction expiration
+            match expiration {
+                Some(num) => builder.set_expiration(num),
+                None => {
+                    let height = handler.get_chain_header().unwrap();
+                    builder.set_expiration(height + 30);
+                }
+            }
+
             let transaction = builder.post(None, fee)?;
             transaction.verify()?;
             let mut vec: Vec<u8> = vec![];

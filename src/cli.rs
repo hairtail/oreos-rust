@@ -74,7 +74,7 @@ pub enum Transaction {
         fee: u64,
         /// Expiration sequence for this transaction
         #[clap(long)]
-        expiration: u32,
+        expiration: Option<u32>,
         /// Memo in transaction
         #[clap(long, default_value_t=String::from("oreos-causal-send"))]
         memo: String,
