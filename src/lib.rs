@@ -16,7 +16,6 @@ use ironfish_rust::{
 };
 use ironfish_zkp::constants::ASSET_ID_LENGTH;
 use oreoscan::OreoscanRequest;
-use rpc::RpcHandler;
 use std::collections::HashMap;
 
 const NATIVE_ASSET_ID: &str = "d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6";
@@ -67,14 +66,13 @@ fn decrypt_encrypted_note(
 }
 
 fn decrypt_tx_internal(
+    handler: &OreoscanRequest,
     hash: String,
     incoming_viewkey: &str,
     outgoing_viewkey: &str,
-    endpoint: String,
 ) -> anyhow::Result<HashMap<String, Vec<TransactionReceiver>>> {
-    let transaction_info = OreoscanRequest::get_transaction(&hash)?;
-    let rpc_handler = RpcHandler::new(endpoint);
-    let resp = rpc_handler.get_transaction(&transaction_info.blockHash, &transaction_info.hash)?;
+    let transaction_info = handler.get_transaction(&hash)?;
+    let resp = handler.get_rpc_transaction(&transaction_info.blockHash, &transaction_info.hash)?;
     let mut result: HashMap<String, Vec<TransactionReceiver>> = HashMap::new();
     for item in resp.notesEncrypted {
         if let Ok(note) = decrypt_encrypted_note(item.noteData, incoming_viewkey, outgoing_viewkey)
@@ -98,14 +96,10 @@ pub fn decrypt_tx(
     hash: String,
     incoming_viewkey: String,
     outgoing_viewkey: String,
-    endpoint: String,
 ) -> Result<String, IronfishError> {
-    let decrypted_note = decrypt_tx_internal(
-        hash.clone(),
-        &incoming_viewkey,
-        &outgoing_viewkey,
-        endpoint.clone(),
-    );
+    let handler = OreoscanRequest::new();
+    let decrypted_note =
+        decrypt_tx_internal(&handler, hash.clone(), &incoming_viewkey, &outgoing_viewkey);
     match decrypted_note {
         Ok(notes) => {
             let mut result = String::from("");
@@ -146,19 +140,14 @@ pub fn causal_send(
     incoming_viewkey: String,
     outgoing_viewkey: String,
     spending_key: String,
-    endpoint: String,
     receiver: String,
     amount: u64,
     fee: u64,
     expiration: u32,
     memo: String,
 ) -> Result<String, IronfishError> {
-    match decrypt_tx_internal(
-        hash.clone(),
-        &incoming_viewkey,
-        &outgoing_viewkey,
-        endpoint.clone(),
-    ) {
+    let handler = OreoscanRequest::new();
+    match decrypt_tx_internal(&handler, hash.clone(), &incoming_viewkey, &outgoing_viewkey) {
         Ok(data) => {
             let view_key = IncomingViewKey::from_hex(&incoming_viewkey)?;
             let addr = PublicAddress::from_view_key(&view_key).hex_public_address();
@@ -195,9 +184,8 @@ pub fn causal_send(
             let mut builder = ProposedTransaction::new(SaplingKey::from_hex(&spending_key)?);
 
             // Transaction spends
-            let rpc_handler = RpcHandler::new(endpoint);
             for spend in spends.iter() {
-                let witness_rpc = rpc_handler.get_witness(spend.index).unwrap();
+                let witness_rpc = handler.get_rpc_note_witness(spend.index).unwrap();
                 let witness = Witness {
                     tree_size: witness_rpc.treeSize as usize,
                     root_hash: Scalar::from_bytes(
@@ -234,7 +222,7 @@ pub fn causal_send(
             let hash = blake3::hash(&vec);
             let hex_hash = hex::encode(hash.as_bytes());
             let signed_transaction = hex::encode(vec);
-            rpc_handler.post_transaction(signed_transaction).unwrap();
+            handler.post_rpc_transaction(signed_transaction).unwrap();
             Ok(format!("Transaction sent successfully, hash: {}", hex_hash))
         }
         Err(e) => Ok(e.to_string()),
