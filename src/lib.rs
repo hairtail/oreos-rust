@@ -150,7 +150,13 @@ pub fn causal_send(
     let handler = OreoscanRequest::new();
     match decrypt_tx_internal(&handler, hash.clone(), &incoming_viewkey, &outgoing_viewkey) {
         Ok(data) => {
-            let amount_in_ore = amount.mul(IRON_TO_ORE as f64) as u64;
+            // Handle send amount, f64 u64
+            let amount_in_ore = amount.mul(IRON_TO_ORE as f64).trunc();
+            if amount_in_ore >= u64::MAX as f64 {
+                panic!("Too large send amount, this should never happen");
+            }
+            let amount_in_ore = amount_in_ore as u64;
+
             let view_key = IncomingViewKey::from_hex(&incoming_viewkey)?;
             let addr = PublicAddress::from_view_key(&view_key).hex_public_address();
             let mut sendable_value = 0u64;
