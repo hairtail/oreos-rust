@@ -66,10 +66,10 @@ pub enum Transaction {
         /// Receiver address
         #[clap(long)]
         receiver: String,
-        /// Amount sent to receiver
+        /// Amount sent to receiver in IRON
         #[clap(long)]
-        amount: u64,
-        /// Gas fee for this transaction
+        amount: f64,
+        /// Gas fee for this transaction in Ore
         #[clap(long, default_value_t = 1u64)]
         fee: u64,
         /// Expiration sequence for this transaction

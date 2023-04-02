@@ -16,9 +16,10 @@ use ironfish_rust::{
 };
 use ironfish_zkp::constants::ASSET_ID_LENGTH;
 use oreoscan::OreoscanRequest;
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Mul};
 
 const NATIVE_ASSET_ID: &str = "d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6";
+const IRON_TO_ORE: u64 = 10_000_0000;
 
 pub fn create_account(account: Account) -> Result<String, IronfishError> {
     match account {
@@ -141,7 +142,7 @@ pub fn causal_send(
     outgoing_viewkey: String,
     spending_key: String,
     receiver: String,
-    amount: u64,
+    amount: f64,
     fee: u64,
     expiration: Option<u32>,
     memo: String,
@@ -149,6 +150,7 @@ pub fn causal_send(
     let handler = OreoscanRequest::new();
     match decrypt_tx_internal(&handler, hash.clone(), &incoming_viewkey, &outgoing_viewkey) {
         Ok(data) => {
+            let amount_in_ore = amount.mul(IRON_TO_ORE as f64) as u64;
             let view_key = IncomingViewKey::from_hex(&incoming_viewkey)?;
             let addr = PublicAddress::from_view_key(&view_key).hex_public_address();
             let mut sendable_value = 0u64;
@@ -166,17 +168,18 @@ pub fn causal_send(
                 return Err(IronfishError::InvalidBalance);
             }
 
-            if sendable_value <= amount {
+            println!(
+                "You have received {} $IRON in this transaction.",
+                sendable_value / IRON_TO_ORE
+            );
+
+            if sendable_value <= amount_in_ore {
                 println!("Amount not enough to send");
                 return Err(IronfishError::InvalidBalance);
             }
 
             println!(
-                "You have received {} $IRON in this transaction.",
-                sendable_value
-            );
-            println!(
-                "You are about to send: {} $ore to {}, gas: {} $ore, memo: {}",
+                "You are about to send: {} $IRON to {}, gas: {} $ore, memo: {}",
                 amount, receiver, fee, memo
             );
 
@@ -212,7 +215,7 @@ pub fn causal_send(
             }
 
             // Transaction outputs
-            let output = create_output(&receiver, &addr, amount, memo)?;
+            let output = create_output(&receiver, &addr, amount_in_ore, memo)?;
             builder.add_output(output)?;
 
             // Transaction expiration
