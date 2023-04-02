@@ -59,3 +59,9 @@ pub struct TransactionReceiver {
     pub assetId: String,
     pub memo: String,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct PostTransactionResponse {
+    pub success: bool,
+    pub reason: Option<String>,
+}

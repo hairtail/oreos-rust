@@ -1,5 +1,5 @@
 use crate::{
-    abi::{NoteWitness, OreoOverview, OreoTransaction, RpcTransaction},
+    abi::{NoteWitness, OreoOverview, OreoTransaction, PostTransactionResponse, RpcTransaction},
     rpc::RpcResponse,
 };
 use anyhow::Result;
@@ -65,11 +65,19 @@ impl OreoscanRequest {
         Ok(response.data)
     }
 
-    pub fn post_rpc_transaction(&self, signed_transaction: String) -> Result<()> {
+    pub fn post_rpc_transaction(
+        &self,
+        signed_transaction: String,
+    ) -> Result<PostTransactionResponse> {
         let route = format!("{}/rpc/addTx", &self.base_route);
-        self.agent.clone().post(&route).send_json(ureq::json!({
-            "transaction": signed_transaction,
-        }))?;
-        Ok(())
+        let response: RpcResponse<PostTransactionResponse> = self
+            .agent
+            .clone()
+            .post(&route)
+            .send_json(ureq::json!({
+                "transaction": signed_transaction,
+            }))?
+            .into_json()?;
+        Ok(response.data)
     }
 }

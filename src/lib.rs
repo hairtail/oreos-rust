@@ -172,7 +172,7 @@ pub fn causal_send(
             }
 
             println!(
-                "You have received {} $ore in this transaction.",
+                "You have received {} $IRON in this transaction.",
                 sendable_value
             );
             println!(
@@ -231,8 +231,18 @@ pub fn causal_send(
             let hash = blake3::hash(&vec);
             let hex_hash = hex::encode(hash.as_bytes());
             let signed_transaction = hex::encode(vec);
-            handler.post_rpc_transaction(signed_transaction).unwrap();
-            Ok(format!("Transaction sent successfully, hash: {}", hex_hash))
+            let send_result = handler.post_rpc_transaction(signed_transaction).unwrap();
+
+            if send_result.success {
+                Ok(format!("Transaction sent successfully, hash: {}", hex_hash))
+            } else {
+                Ok(format!(
+                    "Transaction was rejected, reason: {}",
+                    send_result
+                        .reason
+                        .unwrap_or("no reason from node, this should never happend".into())
+                ))
+            }
         }
         Err(e) => Ok(e.to_string()),
     }
