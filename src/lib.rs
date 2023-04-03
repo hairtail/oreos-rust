@@ -113,7 +113,10 @@ pub fn decrypt_tx(
                 for receiver in receivers {
                     let line = format!(
                         "Receiver: {}, {}, {}, {}\n",
-                        receiver.address, receiver.value, receiver.assetId, receiver.memo
+                        receiver.address,
+                        receiver.value / IRON_TO_ORE,
+                        receiver.assetId,
+                        receiver.memo
                     );
                     result.push_str(&line);
                     if receiver.address == addr {
@@ -124,8 +127,8 @@ pub fn decrypt_tx(
             if sendable_value > 0u64 {
                 result.push_str(
                     format!(
-                        "You have received {} $ore in this transaction",
-                        sendable_value
+                        "You have received {} $IRON in this transaction",
+                        sendable_value / IRON_TO_ORE
                     )
                     .as_str(),
                 );

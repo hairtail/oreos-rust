@@ -83,9 +83,9 @@ Known AssetId
 ./target/release/oreos transaction decrypt --hash <HASH> --incoming-viewkey <INCOMING_VIEWKEY> --outgoing-viewkey <OUTGOING_VIEWKEY>
 // Sender address
 Sender: 123xsdawegjkljsd
-// Receiver: receiver address, value in ore, asset id, memo
-Receiver: xxx, 100, d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6, hello
-Receiver: xxx, 100, d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6, hello
+// Receiver: receiver address, value in IRON, asset id, memo
+Receiver: xxx, 1, d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6, hello
+Receiver: xxx, 1, d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6, hello
 ```
 
 ### 4.2 What Causal Send Means
