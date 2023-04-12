@@ -114,7 +114,7 @@ pub fn decrypt_tx(
                     let line = format!(
                         "Receiver: {}, {}, {}, {}\n",
                         receiver.address,
-                        receiver.value / IRON_TO_ORE,
+                        receiver.value as f64 / IRON_TO_ORE as f64,
                         receiver.assetId,
                         receiver.memo
                     );
@@ -128,7 +128,7 @@ pub fn decrypt_tx(
                 result.push_str(
                     format!(
                         "You have received {} $IRON in this transaction",
-                        sendable_value / IRON_TO_ORE
+                        sendable_value as f64 / IRON_TO_ORE as f64
                     )
                     .as_str(),
                 );
@@ -179,7 +179,7 @@ pub fn causal_send(
 
             println!(
                 "You have received {} $IRON in this transaction.",
-                sendable_value / IRON_TO_ORE
+                sendable_value as f64 / IRON_TO_ORE as f64
             );
 
             if sendable_value <= amount_in_ore {
