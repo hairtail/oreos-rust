@@ -5,7 +5,7 @@ pub mod rpc;
 use abi::TransactionReceiver;
 use cli::Account;
 use ironfish_rust::{
-    assets::asset_identifier::{AssetIdentifier, NATIVE_ASSET},
+    assets::asset_identifier::NATIVE_ASSET,
     errors::IronfishError,
     keys::Language,
     sapling_bls12::Scalar,
@@ -13,7 +13,6 @@ use ironfish_rust::{
     IncomingViewKey, MerkleNote, Note, OutgoingViewKey, ProposedTransaction, PublicAddress,
     SaplingKey,
 };
-use ironfish_zkp::constants::ASSET_ID_LENGTH;
 use rpc::RpcHandler;
 use std::{collections::HashMap, ops::Mul};
 
