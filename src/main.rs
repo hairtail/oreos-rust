@@ -11,7 +11,8 @@ fn main() -> anyhow::Result<()> {
                 hash,
                 incoming_viewkey,
                 outgoing_viewkey,
-            } => decrypt_tx(hash, incoming_viewkey, outgoing_viewkey),
+                endpoint,
+            } => decrypt_tx(hash, incoming_viewkey, outgoing_viewkey, endpoint),
             Transaction::Send {
                 hash,
                 incoming_viewkey,
@@ -22,6 +23,7 @@ fn main() -> anyhow::Result<()> {
                 fee,
                 expiration,
                 memo,
+                endpoint,
             } => causal_send(
                 hash,
                 incoming_viewkey,
@@ -32,6 +34,7 @@ fn main() -> anyhow::Result<()> {
                 fee,
                 expiration,
                 memo,
+                endpoint,
             ),
         },
     };

@@ -48,6 +48,9 @@ pub enum Transaction {
         /// Hex encoded account outgoing view key
         #[clap(short, long)]
         outgoing_viewkey: String,
+        /// Http rpc endpoint
+        #[clap(short, long)]
+        endpoint: String,
     },
     /// Ironfish transaction causal send
     Send {
@@ -78,5 +81,8 @@ pub enum Transaction {
         /// Memo in transaction
         #[clap(long, default_value_t=String::from("oreos-causal-send"))]
         memo: String,
+        /// Http rpc endpoint
+        #[clap(short, long)]
+        endpoint: String,
     },
 }

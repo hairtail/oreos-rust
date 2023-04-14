@@ -1,12 +1,11 @@
 pub mod abi;
 pub mod cli;
-pub mod oreoscan;
 pub mod rpc;
 
 use abi::TransactionReceiver;
 use cli::Account;
 use ironfish_rust::{
-    assets::asset::asset_generator_from_id,
+    assets::asset_identifier::{AssetIdentifier, NATIVE_ASSET},
     errors::IronfishError,
     keys::Language,
     sapling_bls12::Scalar,
@@ -15,10 +14,9 @@ use ironfish_rust::{
     SaplingKey,
 };
 use ironfish_zkp::constants::ASSET_ID_LENGTH;
-use oreoscan::OreoscanRequest;
+use rpc::RpcHandler;
 use std::{collections::HashMap, ops::Mul};
 
-const NATIVE_ASSET_ID: &str = "d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6";
 const IRON_TO_ORE: u64 = 10_000_0000;
 
 pub fn create_account(account: Account) -> Result<String, IronfishError> {
@@ -67,28 +65,28 @@ fn decrypt_encrypted_note(
 }
 
 fn decrypt_tx_internal(
-    handler: &OreoscanRequest,
+    handler: &RpcHandler,
     hash: String,
     incoming_viewkey: &str,
     outgoing_viewkey: &str,
 ) -> anyhow::Result<HashMap<String, Vec<TransactionReceiver>>> {
-    let transaction_info = handler.get_transaction(&hash)?;
-    let resp = handler.get_rpc_transaction(&transaction_info.blockHash, &transaction_info.hash)?;
+    let transaction = handler.get_transaction(&hash)?;
+    let mut note_index = transaction.noteSize - transaction.notesCount;
     let mut result: HashMap<String, Vec<TransactionReceiver>> = HashMap::new();
-    for item in resp.notesEncrypted {
-        if let Ok(note) = decrypt_encrypted_note(item.noteData, incoming_viewkey, outgoing_viewkey)
-        {
+    for item in transaction.notesEncrypted {
+        if let Ok(note) = decrypt_encrypted_note(item, incoming_viewkey, outgoing_viewkey) {
             let key = note.sender().hex_public_address();
             let receiver = TransactionReceiver {
                 note: note.clone(),
-                index: item.noteIndex,
+                index: note_index,
                 address: note.owner().hex_public_address(),
                 value: note.value(),
-                assetId: hex::encode(note.asset_id()),
+                assetId: hex::encode(note.asset_id().as_bytes()),
                 memo: note.memo().to_string(),
             };
             result.entry(key).or_insert(Vec::new()).push(receiver);
         }
+        note_index += 1;
     }
     Ok(result)
 }
@@ -97,8 +95,9 @@ pub fn decrypt_tx(
     hash: String,
     incoming_viewkey: String,
     outgoing_viewkey: String,
+    endpoint: String,
 ) -> Result<String, IronfishError> {
-    let handler = OreoscanRequest::new();
+    let handler = RpcHandler::new(endpoint);
     let decrypted_note =
         decrypt_tx_internal(&handler, hash.clone(), &incoming_viewkey, &outgoing_viewkey);
     match decrypted_note {
@@ -149,8 +148,9 @@ pub fn causal_send(
     fee: u64,
     expiration: Option<u32>,
     memo: String,
+    endpoint: String,
 ) -> Result<String, IronfishError> {
-    let handler = OreoscanRequest::new();
+    let handler = RpcHandler::new(endpoint);
     match decrypt_tx_internal(&handler, hash.clone(), &incoming_viewkey, &outgoing_viewkey) {
         Ok(data) => {
             // Handle send amount, f64 u64
@@ -197,7 +197,7 @@ pub fn causal_send(
 
             // Transaction spends
             for spend in spends.iter() {
-                let witness_rpc = handler.get_rpc_note_witness(spend.index).unwrap();
+                let witness_rpc = handler.get_witness(spend.index).unwrap();
                 let witness = Witness {
                     tree_size: witness_rpc.treeSize as usize,
                     root_hash: Scalar::from_bytes(
@@ -240,20 +240,12 @@ pub fn causal_send(
             transaction.verify()?;
             let mut vec: Vec<u8> = vec![];
             transaction.write(&mut vec)?;
-            let hash = blake3::hash(&vec);
-            let hex_hash = hex::encode(hash.as_bytes());
             let signed_transaction = hex::encode(vec);
-            let send_result = handler.post_rpc_transaction(signed_transaction).unwrap();
+            let send_result = handler.broadcast_transaction(signed_transaction);
 
-            if send_result.success {
-                Ok(format!("Transaction sent successfully, hash: {}", hex_hash))
-            } else {
-                Ok(format!(
-                    "Transaction was rejected, reason: {}",
-                    send_result
-                        .reason
-                        .unwrap_or("no reason from node, this should never happend".into())
-                ))
+            match send_result {
+                Ok(res) => Ok(format!("Transaction sent successfully, hash: {}", res.hash)),
+                Err(e) => Ok(format!("Transaction was rejected, reason: {}", e)),
             }
         }
         Err(e) => Ok(e.to_string()),
@@ -268,9 +260,5 @@ fn create_output(
 ) -> Result<Note, IronfishError> {
     let owner = PublicAddress::from_hex(owner_address)?;
     let sender = PublicAddress::from_hex(sender_address)?;
-    let asset_id_vec = hex::decode(NATIVE_ASSET_ID).unwrap();
-    let mut asset_id_bytes = [0; ASSET_ID_LENGTH];
-    asset_id_bytes.clone_from_slice(&asset_id_vec[0..ASSET_ID_LENGTH]);
-    let asset_generator = asset_generator_from_id(&asset_id_bytes);
-    Ok(Note::new(owner, value, memo, asset_generator, sender))
+    Ok(Note::new(owner, value, memo, NATIVE_ASSET, sender))
 }

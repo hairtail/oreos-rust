@@ -1,4 +1,4 @@
-use crate::abi::{NoteWitness, RpcTransaction};
+use crate::abi::{BroadcastTransactionResponse, ChainInfo, NoteWitness, RpcTransaction};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -25,18 +25,21 @@ impl RpcHandler {
                 .build(),
         }
     }
-    pub fn get_transaction(
-        &self,
-        block_hash: &str,
-        transaction_hash: &str,
-    ) -> Result<RpcTransaction> {
+
+    pub fn get_chain_header(&self) -> Result<u32> {
+        let path = format!("http://{}/chain/getChainInfo", self.endpoint);
+        let response: RpcResponse<ChainInfo> =
+            self.agent.clone().post(&path).call()?.into_json()?;
+        Ok(response.data.currentBlockIdentifier.index.parse::<u32>()?)
+    }
+
+    pub fn get_transaction(&self, transaction_hash: &str) -> Result<RpcTransaction> {
         let path = format!("http://{}/chain/getTransaction", self.endpoint);
         let response: RpcResponse<RpcTransaction> = self
             .agent
             .clone()
             .post(&path)
             .send_json(ureq::json!({
-                "blockHash": block_hash,
                 "transactionHash": transaction_hash,
             }))?
             .into_json()?;
@@ -56,11 +59,20 @@ impl RpcHandler {
         Ok(response.data)
     }
 
-    pub fn post_transaction(&self, signed_transaction: String) -> Result<()> {
-        let path = format!("http://{}/chain/postTransaction", self.endpoint);
-        self.agent.clone().post(&path).send_json(ureq::json!({
-            "transaction": signed_transaction,
-        }))?;
-        Ok(())
+    pub fn broadcast_transaction(
+        &self,
+        signed_transaction: String,
+    ) -> Result<BroadcastTransactionResponse> {
+        println!("tx: {}", signed_transaction);
+        let path = format!("http://{}/chain/broadcastTransaction", self.endpoint);
+        let response: RpcResponse<BroadcastTransactionResponse> = self
+            .agent
+            .clone()
+            .post(&path)
+            .send_json(ureq::json!({
+                "transaction": signed_transaction,
+            }))?
+            .into_json()?;
+        Ok(response.data)
     }
 }

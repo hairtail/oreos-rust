@@ -77,7 +77,7 @@ Transaction decryption with `transactionHash`, `incomingViewKey`, `outgoingViewK
 
 Known AssetId
 
-`d7c86706f5817aa718cd1cfad03233bcd64a7789fd9422d3b17af6823a7e6ac6` --  Ironfish Native Token
+`51f33a2f14f92735e562dc658a5639279ddca3d5079a6d1242b2a588a9cbf44c` --  Ironfish Native Token
 
 ```
 ./target/release/oreos transaction decrypt --hash <HASH> --incoming-viewkey <INCOMING_VIEWKEY> --outgoing-viewkey <OUTGOING_VIEWKEY>

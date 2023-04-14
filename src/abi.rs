@@ -2,38 +2,20 @@ use ironfish_rust::Note;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct OreoOverview {
-    pub height: u32,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct OreoTransaction {
-    pub hash: String,
-    pub blockHash: String,
-    pub index: u64,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
 pub struct Asset {
     pub assetId: String,
     pub value: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct RpcNote {
-    pub noteIndex: u64,
-    pub noteData: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
 pub struct RpcTransaction {
     pub fee: String,
     pub expiration: u64,
-    pub index: u64,
+    pub noteSize: u64,
     pub notesCount: u64,
     pub spendsCount: u64,
     pub signature: String,
-    pub notesEncrypted: Vec<RpcNote>,
+    pub notesEncrypted: Vec<String>,
     pub mints: Vec<Asset>,
     pub burns: Vec<Asset>,
 }
@@ -61,7 +43,17 @@ pub struct TransactionReceiver {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct PostTransactionResponse {
-    pub success: bool,
-    pub reason: Option<String>,
+pub struct BroadcastTransactionResponse {
+    pub hash: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BlockIdentifier {
+    pub index: String,
+    pub hash: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ChainInfo {
+    pub currentBlockIdentifier: BlockIdentifier,
 }
