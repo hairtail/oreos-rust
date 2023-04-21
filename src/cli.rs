@@ -79,7 +79,7 @@ pub enum Transaction {
         #[clap(long)]
         expiration: Option<u32>,
         /// Memo in transaction
-        #[clap(long, default_value_t=String::from("oreos-causal-send"))]
+        #[clap(long)]
         memo: String,
         /// Http rpc endpoint
         #[clap(short, long)]
